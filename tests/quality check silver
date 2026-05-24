@@ -1,0 +1,190 @@
+/*
+Quality checks:
+script purpose:
+      This script performs various checks for data consistency,accuracy,
+      and standardization across silver schemas. It includes checks for:
+      - Nulls or duplicates primary keys.
+      -Unwanted space in string fields
+      -Data standardization and consistency.
+      -Invalid dates and orders
+      - Data consistency between related fields.
+Usage Notes:
+      - Run these checks after data loading silver layer.
+      - Investigate and resolve any descrepancies found during the checks.
+ */
+
+--clean and load the bronze layer into silver layer
+Select
+*
+from bronze.crm_cust_info
+
+--check for nulls or duplicates in primary key
+select
+cst_id,
+count(*)
+from bronze.crm_cust_info
+group by cst_id
+having count(*)>1 or cst_id is null
+
+--check unwanted space.
+select
+cst_firstname
+from bronze.crm_cust_info
+where cst_firstname != TRIM(cst_firstname)
+
+--Data Standardization & consistency.
+select
+distinct cst_gndr
+from bronze.crm_cust_info
+
+select distinct cst_marital_status from  bronze.crm_cust_info
+
+
+
+
+-- checking the same data quanlity for silver as well.
+select
+*
+from silver.crm_cust_info
+
+select
+*
+from silver.crm_cust_info
+where TRIM(cst_lastname) !=cst_firstname
+
+select distinct cst_gndr from silver.crm_cust_info
+
+select
+cst_id,
+count(*)
+from silver.crm_cust_info
+group by cst_id
+having count(*)>1 or cst_id is null
+
+
+
+-- Data quanlity in product table(bronze)
+select
+prd_id,
+count(*)
+from silver.crm_prd_info
+group by prd_id 
+having count(*)>1 or prd_id is null
+
+select
+prd_nm
+from silver.crm_prd_info
+where prd_nm != TRIM(prd_nm)-- check the spacing in the strings
+
+select
+prd_cost
+from silver.crm_prd_info
+where prd_cost < 0 or prd_cost is null
+
+select * from silver.crm_prd_info
+
+
+--Sales details table.
+select
+NULLIF(sls_order_dt,0) AS sls_order_dt
+from bronze.crm_sales_details
+where sls_order_dt <=0 
+or len(sls_order_dt) != 8
+or sls_order_dt > 20500101
+or sls_order_dt < 19000101
+
+--check for invalid dates
+select
+*
+from silver.crm_sales_details
+where sls_order_dt > sls_ship_dt or sls_order_dt > sls_due_dt
+
+--check data consistency between sales,quantity,price
+select distinct
+sls_sales as old_sls_sales,
+sls_quantity,
+sls_price as old_sls_price,
+case when sls_sales is null or sls_sales<=0 or sls_sales != sls_quantity* abs(sls_price)
+     then sls_quantity* abs(sls_price)
+     else sls_sales
+end as sls_sales,
+
+case when sls_price is null or sls_price <=0 
+     then sls_sales/nullif(sls_quantity,0)
+     else  sls_price
+end as sls_price
+from bronze.crm_sales_details
+where sls_sales != sls_quantity * sls_price
+or sls_sales is null or sls_quantity is null or sls_price is null
+or sls_sales <=0 or sls_quantity <=0 or sls_price <=0
+order by sls_sales,sls_quantity,sls_price
+
+--check the silver- sales detail table.
+
+select
+sls_sales,
+sls_quantity,
+sls_price
+from silver.crm_sales_details
+where sls_sales != sls_quantity * sls_price
+or sls_sales is null or sls_quantity is null or sls_price is null
+or sls_sales <=0 or sls_quantity <=0 or sls_price <=0
+
+
+select 
+case when cid like 'NAS%' then SUBSTRING(cid,4,LEN(cid))
+     else cid
+end cid,
+case when bdate > GETDATE() then null
+     else bdate
+end as bdate,
+case when Upper(trim(gen)) in ('F','FEMALE') then 'Female'
+     when UPPER(trim(gen)) in ('M','MALE') then 'Male'
+     else 'n/a'
+end gen
+from bronze.erp_cust_az12
+
+
+select
+bdate
+from silver.erp_cust_az12
+where bdate <'1924-01-01' or  bdate > GETDATE()
+
+select * from silver.erp_cust_az12
+
+
+
+select 
+Replace(cid,'-','') cid,
+case when trim(cntry)='DE' then 'Germany'
+     when trim(cntry) in ('US','USA') then 'United States'
+     when TRIM(cntry)='' or cntry is null then 'n/a'
+     else TRIM(cntry)
+end cntry
+from bronze.erp_loc_a101
+
+
+select distinct cntry 
+from bronze.erp_loc_a101
+order by cntry
+
+select * from silver.erp_loc_a101
+
+select
+distinct cntry
+from silver.erp_loc_a101
+
+
+select
+id,
+cat,
+subcat,
+maintenance
+from bronze.erp_px_cat_g1v2
+
+select
+distinct maintenance
+from bronze.erp_px_cat_g1v2
+
+select * from silver.crm_prd_info
+
