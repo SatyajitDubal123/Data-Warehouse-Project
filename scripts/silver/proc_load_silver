@@ -80,7 +80,7 @@ BEGIN
 			 Else 'n/a'
 		end as prd_line,
 		cast(prd_start_dt as DATE) prd_start_dt,
-		cast(lead(prd_start_dt) over(partition by prd_start_dt order by prd_start_dt) -1 as date)as prd_end_dt
+		cast(lead(prd_start_dt) over(partition by prd_key order by prd_start_dt) -1 as date)as prd_end_dt
 		from bronze.crm_prd_info
 		set @end_time= GETDATE();
 		print'Load duration:'+cast(datediff(second,@start_time,@end_time) as nvarchar ) +' Seconds';
