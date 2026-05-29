@@ -1,3 +1,11 @@
+/*
+This script performs quality checks to validate the integrity,consistency, and accuracy of the gold layer .
+this checks ensures:
+ - uniqueness of surrogate keys in dimension tables.
+ - referntial integrity between fact and dimension tables
+ - validate of relationships in the data model for analytical purpose.
+*/
+
 SELECT 
 ci.cst_gndr,
 ca.gen,
